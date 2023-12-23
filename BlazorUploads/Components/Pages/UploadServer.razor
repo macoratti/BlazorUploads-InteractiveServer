@@ -1,0 +1,87 @@
+﻿@page "/uploadserver"
+@rendermode InteractiveServer
+
+<h3>Upload de arquivos (InteractiveServer)</h3>
+
+<EditForm Model="@arquivoUpload" OnValidSubmit="@HandleFormSubmit" enctype="multipart/form-data">
+    Selecione até 5 arquivo(s): <InputFile OnChange="@SelectFiles" multiple />
+    <br />
+    <button type="submit">Enviar</button>
+</EditForm>
+
+@if (arquivos.Count > 0)
+{
+    <li>Arquivos selecionados </li>
+    <ul>
+        @foreach (var arq in arquivos)
+        {
+            <li>@arq.Name @arq.Size bytes</li>
+        }
+    </ul>
+}
+
+<br />
+
+<ul>
+    @foreach (var mensagem in mensagens)
+    {
+        <li>
+            @mensagem
+        </li>
+    }
+</ul>
+
+@code {
+    List<string> mensagens = new();
+    List<IBrowserFile> arquivos = new();
+    int tamanhoMaximoArquivo = 1 * 1024 * 1024; //1 MB
+    ArquivoUpload arquivoUpload = new();
+    List<ArquivoUpload> uploads = new();
+
+    private void SelectFiles(InputFileChangeEventArgs e)
+    {
+        arquivos = e.GetMultipleFiles(tamanhoMaximoArquivo).ToList();
+    }
+
+    private async Task HandleFormSubmit()
+    {
+        mensagens.Clear();
+        var extensoesPermitidas = new string[] { ".png", ".jpg", ".jpeg", ".gif" };
+        int contador = 0;
+
+        mensagens.Add("Arquivo(s) enviado(s)  ");
+        foreach (var arquivo in arquivos)
+        {
+            try
+            {
+                (int statusCode, string statusMessage) =
+                    await _uploadService.ArquivoUploadAsync(arquivo,
+                                                            tamanhoMaximoArquivo,
+                                                            extensoesPermitidas);
+
+                if (statusCode == 1)
+                {
+                    mensagens.Add($" {arquivo.Name} ");
+                    var arquivoDados = new ArquivoUpload
+                    {
+                            NomeArquivoUpload = statusMessage
+                    };
+                    // salva imagem no banco de dados
+                    await _uploadRepository.UploadArquivoDb(arquivoDados);
+                    uploads.Add(arquivoDados);
+                    contador++;
+                }
+                else
+                {
+                    mensagens.Add(statusMessage);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                mensagens.Add($"Arquivo : {arquivo.Name} Erro : {ex.Message}");
+            }
+        }
+        mensagens.Add($" {contador}/{arquivos.Count} enviado(s)");
+    }
+}

@@ -1,0 +1,38 @@
+﻿@page "/exibirarquivos"
+@rendermode InteractiveServer
+
+<h3>Arquivos Armazenados</h3>
+
+@if (arquivos != null && arquivos.Any())
+{
+    <div class="file-list">
+        @foreach (var arquivo in arquivos)
+        {
+            <div class="file-item">
+                <img src="\uploads\@arquivo.NomeArquivoUpload" alt="arquivo" />
+                <p>@arquivo.NomeArquivoUpload</p>
+                <button @onclick="() => ExcluirArquivo(arquivo.Id)">Excluir</button>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <li>Nenhum arquivo encontrado</li>
+}
+@code{
+    private IEnumerable<ArquivoUpload>? arquivos;
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregaImagens();
+    }
+    private async Task ExcluirArquivo(int arquivoId)
+    {
+        await _uploadRepository.DeletaArquivo(arquivoId);
+        arquivos = await _uploadRepository.GetArquivos();
+    }
+    private async Task CarregaImagens()
+    {
+        arquivos = await _uploadRepository.GetArquivos();
+    }
+}
